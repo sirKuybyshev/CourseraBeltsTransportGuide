@@ -19,7 +19,7 @@ private:
 };
 
 struct Stop {
-    std::string name; //fix if slow
+    std::string_view name;
     Point coords = {0, 0};
 };
 

@@ -24,20 +24,20 @@ public:
         return uniqueBusStops_.size();
     }
 
-    double GetDistance(const std::unordered_map<std::string, Stop> &stops);
+    double GetDistance(const std::unordered_map<std::string_view, Stop> &stops);
 
-    void AddStop(std::string &&stop);;
+    void AddStop(std::string_view stop);
 
     void Loop();
 
 private:
     int number_;
     int stopCount_ = 0;
-    std::vector<std::string> busStops_;
+    std::vector<std::string_view> busStops_;
     std::unordered_set<std::string_view> uniqueBusStops_;
     double routeLength_ = 0.0;
 
-    double CalculateDistance(const std::unordered_map<std::string, Stop> &stops);
+    double CalculateDistance(const std::unordered_map<std::string_view, Stop> &stops);
 };
 
 #endif//MAIN_CPP_BUSINFO_H

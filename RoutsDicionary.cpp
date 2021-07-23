@@ -7,17 +7,15 @@
 #include "RoutsDicionary.h"
 using namespace std;
 
-string RoutsDictionary::RequestBus(int number) {
-    std::stringstream result;
+void RoutsDictionary::ProcessBusRequest(int number, ostream& os) {
     if (buses_.find(number) != buses_.end()) {
         auto &bus = buses_.at(number);
-        result << "Bus " << number << ": " << bus.NumberOfStops() << " stops on route, ";
-        result << bus.NumberOfUniqueStops() << " unique stops, ";
-        result << setprecision(6) << bus.GetDistance(stops_) << " route length" << std::endl;
+        os << "Bus " << number << ": " << bus.NumberOfStops() << " stops on route, ";
+        os << bus.NumberOfUniqueStops() << " unique stops, ";
+        os << setprecision(6) << bus.GetDistance(stops_) << " route length\n";
     } else {
-        result << "Bus " << number << ": not found" << endl;
+        os << "Bus " << number << ": not found\n";
     }
-    return result.str();
 }
 void RoutsDictionary::ReadBus(istream &is) {
     int busNumber;
@@ -32,7 +30,7 @@ void RoutsDictionary::ReadBus(istream &is) {
         while (is.peek() == ' ') {
             is.get();
         }
-        while (isalpha(is.peek())) {
+        while (isalpha(is.peek()) || isdigit(is.peek())) {
             is >> word;
             if (!stop.empty()) {
                 stop += ' ';
@@ -45,7 +43,8 @@ void RoutsDictionary::ReadBus(istream &is) {
         if (is.peek() != '\n') {
             is >> delim;
         }
-        bus.AddStop(move(stop));
+        string_view sw = *(stopsVault.insert(move(stop)).first);
+        bus.AddStop(sw);
     }
     if (delim == '-') {
         bus.Loop();
@@ -63,8 +62,9 @@ void RoutsDictionary::ReadStop(istream &is) {
     AddStop(move(name), latitude, longitude);
 }
 
-void RoutsDictionary::AddStop(const string& name, double latitude, double longitude) {
-    stops_[name] = {name, {latitude, longitude}};
+void RoutsDictionary::AddStop(string&& name, double latitude, double longitude) {
+    string_view sw = *(stopsVault.insert(name).first);
+    stops_[sw] = {sw, {latitude, longitude}};
 }
 
 std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
@@ -76,7 +76,9 @@ std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
         if (request == "Bus") {
             int busNumber;
             is >> busNumber;
-            os << RequestBus(busNumber);
+            ProcessBusRequest(busNumber, os);
+        } else {
+            throw invalid_argument("Unknown Request");
         }
     }
     return os;
