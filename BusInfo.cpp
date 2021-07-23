@@ -4,8 +4,10 @@
 
 #include "BusInfo.h"
 
+using namespace std;
+
 void BusInfo::AddStop(std::string &&stop) {
-    busStops_.push_back(stop);
+    busStops_.push_back(move(stop));
     if (!uniqueBusStops_.count(busStops_.back())) {
         uniqueBusStops_.insert(busStops_.back());
         stopCount_++;
@@ -29,7 +31,7 @@ double BusInfo::CalculateDistance(const std::unordered_map<std::string, Stop> &s
 }
 
 void BusInfo::Loop() {
-    for (auto item = --busStops_.rbegin(); item != busStops_.rend(); item++) {
+    for (auto item = ++busStops_.rbegin(); item < busStops_.rend(); item++) {
         busStops_.push_back(*item);
     }
 }

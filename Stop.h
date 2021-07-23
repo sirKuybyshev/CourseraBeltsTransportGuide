@@ -19,13 +19,9 @@ private:
 };
 
 struct Stop {
-    std::string_view name;
+    std::string name; //fix if slow
     Point coords = {0, 0};
 };
-
-bool operator==(const Stop &lhs, const Stop &rhs) {
-    return lhs.name == rhs.name;
-}
 
 namespace std {
     template<>

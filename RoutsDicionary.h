@@ -22,8 +22,7 @@ private:
     std::unordered_map<std::string, Stop> stops_;
     std::unordered_map<int, BusInfo> buses_;
 
-    void AddStop(std::string &&name, double latitude, double longitude);
-    ;
+    void AddStop(const std::string& name, double latitude, double longitude);
 
     void ReadStop(std::istream &is);
 

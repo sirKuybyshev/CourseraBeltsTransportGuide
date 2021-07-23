@@ -2,6 +2,8 @@
 // Created by timofey on 7/23/21.
 //
 
+#include <iomanip>
+
 #include "RoutsDicionary.h"
 using namespace std;
 
@@ -9,23 +11,37 @@ string RoutsDictionary::RequestBus(int number) {
     std::stringstream result;
     if (buses_.find(number) != buses_.end()) {
         auto &bus = buses_.at(number);
-        result << "Bus " << number << ": "
-               << bus.GetDistance(stops_) << ' '
-               << bus.NumberOfStops() << ' ' << bus.NumberOfUniqueStops() << std::endl;
+        result << "Bus " << number << ": " << bus.NumberOfStops() << " stops on route, ";
+        result << bus.NumberOfUniqueStops() << " unique stops, ";
+        result << setprecision(6) << bus.GetDistance(stops_) << " route length" << std::endl;
     } else {
-        result << "Bus " << number << " not found";
+        result << "Bus " << number << ": not found" << endl;
     }
     return result.str();
 }
 void RoutsDictionary::ReadBus(istream &is) {
     int busNumber;
-    is >> busNumber;
+    char delim;
+    is >> busNumber >> delim;
     buses_.emplace(busNumber, busNumber);
     BusInfo &bus = buses_.at(busNumber);
     std::string stop;
-    char delim;
     while (is.peek() != '\n') {
-        is >> stop;//todo check last stop
+        stop = "";
+        string word;
+        while (is.peek() == ' ') {
+            is.get();
+        }
+        while (isalpha(is.peek())) {
+            is >> word;
+            if (!stop.empty()) {
+                stop += ' ';
+            }
+            stop += word;
+            while (is.peek() == ' ') {
+                is.get();
+            }
+        }
         if (is.peek() != '\n') {
             is >> delim;
         }
@@ -38,14 +54,19 @@ void RoutsDictionary::ReadBus(istream &is) {
 void RoutsDictionary::ReadStop(istream &is) {
     std::string name;
     double latitude, longitude;
+    char dummy;
+    while (is.peek() == ' ') {
+        is.get();
+    }
     getline(is, name, ':');
-    is >> latitude >> longitude;
-    name.pop_back();
+    is >> latitude >> dummy >> longitude;
     AddStop(move(name), latitude, longitude);
 }
-void RoutsDictionary::AddStop(string &&name, double latitude, double longitude) {
+
+void RoutsDictionary::AddStop(const string& name, double latitude, double longitude) {
     stops_[name] = {name, {latitude, longitude}};
 }
+
 std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
     int count;
     is >> count;
