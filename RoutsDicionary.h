@@ -19,9 +19,8 @@ public:
     std::ostream &ProcessRequests(std::ostream &os = std::cout, std::istream &is = std::cin);
 
 private:
-    std::unordered_map<std::string_view, Stop> stops_;
-    std::unordered_map<int, BusInfo> buses_;
-    std::unordered_set<std::string> stopsVault;
+    std::unordered_map<std::string, Stop> stops_;
+    std::unordered_map<std::string, BusInfo> buses_;
 
     void AddStop(std::string&& name, double latitude, double longitude);
 
@@ -29,7 +28,7 @@ private:
 
     void ReadBus(std::istream &is);
 
-    void ProcessBusRequest(int number, std::ostream& os);
+    void ProcessBusRequest(std::string &&number, std::ostream& os);
 };
 
 #endif//MAIN_CPP_ROUTSDICIONARY_H

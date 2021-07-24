@@ -10,6 +10,9 @@
 
 struct Point {
     constexpr Point(double lat, double lon) : latitude(lat / 360 * 2 * M_PI), longitude(lon / 360 * 2 * M_PI){};
+    [[nodiscard]] double GetSum() const {
+        return latitude + longitude;
+    }
 
 private:
     double latitude;
@@ -19,19 +22,23 @@ private:
 };
 
 struct Stop {
-    std::string_view name;
     Point coords = {0, 0};
 };
 
 namespace std {
     template<>
+    struct [[maybe_unused]] hash<Point> {
+        size_t operator()(const Point &x) const {
+            return hash<double>()(x.GetSum());
+        }
+    };
+    template<>
     struct [[maybe_unused]] hash<Stop> {
         size_t operator()(const Stop &x) const {
-            return hash<string_view>()(x.name);
+            return hash<Point>()(x.coords);
         }
     };
 }// namespace std
-
 
 
 #endif//MAIN_CPP_STOP_H

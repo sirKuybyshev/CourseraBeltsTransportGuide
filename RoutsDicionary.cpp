@@ -5,9 +5,52 @@
 #include <iomanip>
 
 #include "RoutsDicionary.h"
+
 using namespace std;
 
-void RoutsDictionary::ProcessBusRequest(int number, ostream& os) {
+void RoutsDictionary::ReadQueries(istream &is) {
+    int count;
+    is >> count;
+    std::string query;
+    for (int i = 0; i < count; ++i) {
+        is >> query;
+        if (query == "Stop") {
+            while (is.peek() == ' ') {
+                is.get();
+            }
+            ReadStop(is);
+        } else if (query == "Bus") {
+            while (is.peek() == ' ') {
+                is.get();
+            }
+            ReadBus(is);
+        } else {
+            throw std::invalid_argument("Unknown query");
+        }
+    }
+}
+
+std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
+    int count;
+    is >> count;
+    for (int i = 0; i < count; ++i) {
+        std::string request;
+        is >> request;
+        if (request == "Bus") {
+            string busNumber;
+            while (is.peek() == ' ') {
+                is.get();
+            }
+            getline(is, busNumber, '\n');
+            ProcessBusRequest(move(busNumber), os);
+        } else {
+            throw invalid_argument("Unknown Request");
+        }
+    }
+    return os;
+}
+
+void RoutsDictionary::ProcessBusRequest(string &&number, ostream &os) {
     if (buses_.find(number) != buses_.end()) {
         auto &bus = buses_.at(number);
         os << "Bus " << number << ": " << bus.NumberOfStops() << " stops on route, ";
@@ -18,12 +61,12 @@ void RoutsDictionary::ProcessBusRequest(int number, ostream& os) {
     }
 }
 void RoutsDictionary::ReadBus(istream &is) {
-    int busNumber;
-    char delim;
-    is >> busNumber >> delim;
+    string busNumber;
+    getline(is, busNumber, ':');
     buses_.emplace(busNumber, busNumber);
     BusInfo &bus = buses_.at(busNumber);
     std::string stop;
+    char delim;
     while (is.peek() != '\n') {
         stop = "";
         string word;
@@ -43,8 +86,7 @@ void RoutsDictionary::ReadBus(istream &is) {
         if (is.peek() != '\n') {
             is >> delim;
         }
-        string_view sw = *(stopsVault.insert(move(stop)).first);
-        bus.AddStop(sw);
+        bus.AddStop(move(stop));
     }
     if (delim == '-') {
         bus.Loop();
@@ -54,47 +96,11 @@ void RoutsDictionary::ReadStop(istream &is) {
     std::string name;
     double latitude, longitude;
     char dummy;
-    while (is.peek() == ' ') {
-        is.get();
-    }
     getline(is, name, ':');
     is >> latitude >> dummy >> longitude;
     AddStop(move(name), latitude, longitude);
 }
 
 void RoutsDictionary::AddStop(string&& name, double latitude, double longitude) {
-    string_view sw = *(stopsVault.insert(name).first);
-    stops_[sw] = {sw, {latitude, longitude}};
-}
-
-std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
-    int count;
-    is >> count;
-    for (int i = 0; i < count; ++i) {
-        std::string request;
-        is >> request;
-        if (request == "Bus") {
-            int busNumber;
-            is >> busNumber;
-            ProcessBusRequest(busNumber, os);
-        } else {
-            throw invalid_argument("Unknown Request");
-        }
-    }
-    return os;
-}
-void RoutsDictionary::ReadQueries(istream &is) {
-    int count;
-    is >> count;
-    std::string query;
-    for (int i = 0; i < count; ++i) {
-        is >> query;
-        if (query == "Stop") {
-            ReadStop(is);
-        } else if (query == "Bus") {
-            ReadBus(is);
-        } else {
-            throw std::invalid_argument("Unknown query");
-        }
-    }
+    stops_[name] = {{latitude, longitude}};
 }

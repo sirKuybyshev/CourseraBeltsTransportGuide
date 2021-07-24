@@ -6,6 +6,7 @@
 #define MAIN_CPP_BUSINFO_H
 
 #include <string>
+#include <utility>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -14,30 +15,29 @@
 
 class BusInfo {
 public:
-    explicit BusInfo(int number) : number_(number) {}
+    explicit BusInfo(std::string number) : number_(std::move(number)) {
+        busStops_.reserve(100);
+    }
 
     size_t NumberOfStops() {
         return busStops_.size();
     }
 
-    size_t NumberOfUniqueStops() {
-        return uniqueBusStops_.size();
-    }
+    size_t NumberOfUniqueStops();
 
-    double GetDistance(const std::unordered_map<std::string_view, Stop> &stops);
+    double GetDistance(const std::unordered_map<std::string, Stop> &stops);
 
-    void AddStop(std::string_view stop);
+    void AddStop(std::string &&stop);
 
     void Loop();
 
 private:
-    int number_;
+    std::string number_;
     int stopCount_ = 0;
-    std::vector<std::string_view> busStops_;
-    std::unordered_set<std::string_view> uniqueBusStops_;
+    std::vector<std::string> busStops_;
     double routeLength_ = 0.0;
 
-    double CalculateDistance(const std::unordered_map<std::string_view, Stop> &stops);
+    double CalculateDistance(const std::unordered_map<std::string, Stop> &stops);
 };
 
 #endif//MAIN_CPP_BUSINFO_H
