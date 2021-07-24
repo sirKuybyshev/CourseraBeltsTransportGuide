@@ -69,21 +69,14 @@ void RoutsDictionary::ReadBus(istream &is) {
     char delim;
     while (is.peek() != '\n') {
         stop = "";
-        string word;
         while (is.peek() == ' ') {
             is.get();
         }
-        while (isalpha(is.peek()) || isdigit(is.peek())) {
-            is >> word;
-            if (!stop.empty()) {
-                stop += ' ';
-            }
-            stop += word;
-            while (is.peek() == ' ') {
-                is.get();
-            }
+        while (is.peek() != '>' && is.peek() != '-' && is.peek() != '\n') {
+            stop += static_cast<char>(is.get());
         }
         if (is.peek() != '\n') {
+            stop.pop_back();
             is >> delim;
         }
         bus.AddStop(move(stop));
