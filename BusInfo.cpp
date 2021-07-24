@@ -22,7 +22,7 @@ double BusInfo::GetDistance(const unordered_map<string, Stop> &stops) {
 double BusInfo::CalculateDistance(const unordered_map<string, Stop> &stops) {
     double result = 0.0;
     for (auto stop = busStops_.begin(); stop < --busStops_.end(); stop++) {
-        result += CalculateSphereDistance(stops.at(*stop).coords, stops.at(*next(stop)).coords);
+        result += CalculateSphereDistance(stops.at(*stop).GetCoords(), stops.at(*next(stop)).GetCoords());
     }
     return result;
 }

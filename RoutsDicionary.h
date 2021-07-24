@@ -28,7 +28,9 @@ private:
 
     void ReadBus(std::istream &is);
 
-    void ProcessBusRequest(std::string &&number, std::ostream& os);
+    void ProcessBusRequest(const std::string &number, std::ostream& os);
+
+    void ProcessStopRequest(const std::string &stop, std::ostream& os);
 };
 
 #endif//MAIN_CPP_ROUTSDICIONARY_H

@@ -42,7 +42,14 @@ std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
                 is.get();
             }
             getline(is, busNumber, '\n');
-            ProcessBusRequest(move(busNumber), os);
+            ProcessBusRequest(busNumber, os);
+        } else if (request == "Stop") {
+            string stop;
+            while (is.peek() == ' ') {
+                is.get();
+            }
+            getline(is, stop, '\n');
+            ProcessStopRequest(stop, os);
         } else {
             throw invalid_argument("Unknown Request");
         }
@@ -50,7 +57,7 @@ std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
     return os;
 }
 
-void RoutsDictionary::ProcessBusRequest(string &&number, ostream &os) {
+void RoutsDictionary::ProcessBusRequest(const string &number, ostream &os) {
     if (buses_.find(number) != buses_.end()) {
         auto &bus = buses_.at(number);
         os << "Bus " << number << ": " << bus.NumberOfStops() << " stops on route, ";
@@ -60,6 +67,7 @@ void RoutsDictionary::ProcessBusRequest(string &&number, ostream &os) {
         os << "Bus " << number << ": not found\n";
     }
 }
+
 void RoutsDictionary::ReadBus(istream &is) {
     string busNumber;
     getline(is, busNumber, ':');
@@ -79,6 +87,7 @@ void RoutsDictionary::ReadBus(istream &is) {
             stop.pop_back();
             is >> delim;
         }
+        stops_[stop].AddBus(bus.GetName());
         bus.AddStop(move(stop));
     }
     if (delim == '-') {
@@ -94,6 +103,23 @@ void RoutsDictionary::ReadStop(istream &is) {
     AddStop(move(name), latitude, longitude);
 }
 
-void RoutsDictionary::AddStop(string&& name, double latitude, double longitude) {
-    stops_[name] = {{latitude, longitude}};
+void RoutsDictionary::AddStop(string &&name, double latitude, double longitude) {
+    stops_[name].SetCoords(latitude, longitude);
+}
+
+void RoutsDictionary::ProcessStopRequest(const string &stop, ostream &os) {
+    if (stops_.find(stop) != stops_.end()) {
+        const auto& stopInfo = stops_.at(stop);
+        if (!stopInfo.GetBuses().empty()) {
+            os << "Stop " << stop << ": buses";
+            for (const auto& item : stopInfo.GetBuses()) {
+                os << ' ' << item;
+            }
+            os << '\n';
+        } else {
+            os << "Stop " << stop << ": no buses\n";
+        }
+    } else {
+        os << "Stop " << stop << ": not found\n";
+    }
 }

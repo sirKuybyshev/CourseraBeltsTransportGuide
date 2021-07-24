@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <string>
+#include <set>
 
 struct Point {
     constexpr Point(double lat, double lon) : latitude(lat / 360 * 2 * M_PI), longitude(lon / 360 * 2 * M_PI){};
@@ -21,8 +22,23 @@ private:
     friend double CalculateSphereDistance(Point a, Point b);
 };
 
-struct Stop {
+class Stop {
     Point coords = {0, 0};
+    std::set<std::string> buses;
+
+public:
+    void SetCoords(double lat, double lon) {
+        coords = {lat, lon};
+    }
+    void AddBus(const std::string& busName) {
+        buses.insert(busName);
+    }
+    [[nodiscard]] std::set<std::string> GetBuses() const {
+        return buses;
+    }
+    [[nodiscard]] Point GetCoords() const {
+        return coords;
+    }
 };
 
 namespace std {
@@ -35,7 +51,7 @@ namespace std {
     template<>
     struct [[maybe_unused]] hash<Stop> {
         size_t operator()(const Stop &x) const {
-            return hash<Point>()(x.coords);
+            return hash<Point>()(x.GetCoords());
         }
     };
 }// namespace std

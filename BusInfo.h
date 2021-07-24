@@ -15,7 +15,7 @@
 
 class BusInfo {
 public:
-    explicit BusInfo(std::string number) : number_(std::move(number)) {
+    explicit BusInfo(std::string number) : name_(std::move(number)) {
         busStops_.reserve(100);
     }
 
@@ -25,6 +25,10 @@ public:
 
     size_t NumberOfUniqueStops();
 
+    std::string GetName() {
+        return name_;
+    }
+
     double GetDistance(const std::unordered_map<std::string, Stop> &stops);
 
     void AddStop(std::string &&stop);
@@ -32,8 +36,8 @@ public:
     void Loop();
 
 private:
-    std::string number_;
-    int stopCount_ = 0;
+    std::string name_;
+    size_t stopCount_ = 0;
     std::vector<std::string> busStops_;
     double routeLength_ = 0.0;
 
