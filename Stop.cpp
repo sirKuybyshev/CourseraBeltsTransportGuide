@@ -11,3 +11,6 @@ double CalculateSphereDistance(Point a, Point b) {
                            cos(a.longitude - b.longitude);//TrigonometryMagic
     return acos(cos_d) * EARTH_RADIUS;
 }
+void Stop::AddVertex(const std::string& stop, int distance) {
+    distances_[stop] = distance;
+}

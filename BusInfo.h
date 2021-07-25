@@ -31,6 +31,10 @@ public:
 
     double GetDistance(const std::unordered_map<std::string, Stop> &stops);
 
+    [[nodiscard]] double GetCurvature() const {
+        return routeLength_ / minimalLength_;
+    }
+
     void AddStop(std::string &&stop);
 
     void Loop();
@@ -40,8 +44,11 @@ private:
     size_t stopCount_ = 0;
     std::vector<std::string> busStops_;
     double routeLength_ = 0.0;
+    double minimalLength_ = 0.0;
 
-    double CalculateDistance(const std::unordered_map<std::string, Stop> &stops);
+    double CalculateMinimalDistance(const std::unordered_map<std::string, Stop> &stops);
+
+    double CalculateTrueDistance(const std::unordered_map<std::string, Stop> &stops);
 };
 
 #endif//MAIN_CPP_BUSINFO_H

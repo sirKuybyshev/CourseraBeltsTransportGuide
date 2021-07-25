@@ -5,6 +5,9 @@
 #include "BusInfo.h"
 
 #include <algorithm>
+#include <stdexcept>
+#include <iostream>
+
 
 using namespace std;
 
@@ -13,13 +16,16 @@ void BusInfo::AddStop(string &&stop) {
 }
 
 double BusInfo::GetDistance(const unordered_map<string, Stop> &stops) {
+    if (minimalLength_ == 0.0) {
+        minimalLength_ = CalculateMinimalDistance(stops);
+    }
     if (routeLength_ == 0.0) {
-        routeLength_ = CalculateDistance(stops);
+        routeLength_ = CalculateTrueDistance(stops);
     }
     return routeLength_;
 }
 
-double BusInfo::CalculateDistance(const unordered_map<string, Stop> &stops) {
+double BusInfo::CalculateMinimalDistance(const unordered_map<string, Stop> &stops) {
     double result = 0.0;
     for (auto stop = busStops_.begin(); stop < --busStops_.end(); stop++) {
         result += CalculateSphereDistance(stops.at(*stop).GetCoords(), stops.at(*next(stop)).GetCoords());
@@ -48,4 +54,18 @@ size_t BusInfo::NumberOfUniqueStops() {
         stopCount_ = unique.size();
     }
     return stopCount_;
+}
+double BusInfo::CalculateTrueDistance(const unordered_map<std::string, Stop> &stops) {
+    double result = 0.0;
+    for (auto stop = busStops_.begin(); stop != --busStops_.end(); stop++) {
+        if (stops.at(*stop).GetDistances().count(*next(stop))) {
+            result += stops.at(*stop).GetDistances()[*next(stop)];
+        } else if (stops.at(*next(stop)).GetDistances().count(*stop)) {
+            result += stops.at(*next(stop)).GetDistances()[*stop];
+        } else {
+            cerr << *stop << ' ' << *next(stop);
+            throw invalid_argument("No trip between");
+        }
+    }
+    return result;
 }

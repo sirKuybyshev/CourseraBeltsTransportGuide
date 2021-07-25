@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <set>
+#include <unordered_map>
 
 struct Point {
     constexpr Point(double lat, double lon) : latitude(lat / 360 * 2 * M_PI), longitude(lon / 360 * 2 * M_PI){};
@@ -23,21 +24,26 @@ private:
 };
 
 class Stop {
-    Point coords = {0, 0};
-    std::set<std::string> buses;
-
+    Point coords_ = {0, 0};
+    std::set<std::string> buses_;
+    std::unordered_map<std::string, int> distances_;
 public:
     void SetCoords(double lat, double lon) {
-        coords = {lat, lon};
+        coords_ = {lat, lon};
     }
     void AddBus(const std::string& busName) {
-        buses.insert(busName);
+        buses_.insert(busName);
     }
+    void AddVertex(const std::string& stop, int distance);
+
     [[nodiscard]] std::set<std::string> GetBuses() const {
-        return buses;
+        return buses_;
     }
     [[nodiscard]] Point GetCoords() const {
-        return coords;
+        return coords_;
+    }
+    std::unordered_map<std::string, int> GetDistances() const {
+        return distances_;
     }
 };
 

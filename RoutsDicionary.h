@@ -22,15 +22,13 @@ private:
     std::unordered_map<std::string, Stop> stops_;
     std::unordered_map<std::string, BusInfo> buses_;
 
-    void AddStop(std::string&& name, double latitude, double longitude);
-
     void ReadStop(std::istream &is);
 
     void ReadBus(std::istream &is);
 
-    void ProcessBusRequest(const std::string &number, std::ostream& os);
+    void ProcessBusRequest(const std::string &number, std::ostream &os);
 
-    void ProcessStopRequest(const std::string &stop, std::ostream& os);
+    void ProcessStopRequest(const std::string &stop, std::ostream &os);
 };
 
 #endif//MAIN_CPP_ROUTSDICIONARY_H
