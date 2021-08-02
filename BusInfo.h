@@ -19,13 +19,13 @@ public:
         busStops_.reserve(100);
     }
 
-    size_t NumberOfStops() {
+    size_t NumberOfStops() const {
         return busStops_.size();
     }
 
     size_t NumberOfUniqueStops();
 
-    std::string GetName() {
+    [[nodiscard]] std::string GetName() const{
         return name_;
     }
 
@@ -35,7 +35,11 @@ public:
         return routeLength_ / minimalLength_;
     }
 
-    void AddStop(std::string &&stop);
+    [[nodiscard]] const std::vector<std::string>& GetStops() const {
+        return busStops_;
+    }
+
+    void AddStop(const std::string &stop);
 
     void Loop();
 

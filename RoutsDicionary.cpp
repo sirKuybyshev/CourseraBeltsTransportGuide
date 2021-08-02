@@ -1,144 +1,182 @@
-//
-// Created by timofey on 7/23/21.
-//
-
 #include <iomanip>
 
+#include "Json.h"
 #include "RoutsDicionary.h"
 
 using namespace std;
 
-void RoutsDictionary::ReadQueries(istream &is) {
-    int count;
-    is >> count;
-    std::string query;
-    for (int i = 0; i < count; ++i) {
-        is >> query;
-        if (query == "Stop") {
-            while (is.peek() == ' ') {
-                is.get();
-            }
-            ReadStop(is);
-        } else if (query == "Bus") {
-            while (is.peek() == ' ') {
-                is.get();
-            }
-            ReadBus(is);
+Graph::EdgeId Stop::lastId_ = 0;
+
+istream &RoutsDictionary::Process(istream &is, ostream &os) {
+    auto input = Json::Load(is).GetRoot().AsMap();
+    SetSettings(input.at("routing_settings"));
+    ReadQueries(input.at("base_requests").AsArray());
+    BuildGraph();
+    ProcessRequests(input.at("stat_requests").AsArray(), os);
+    return is;
+}
+
+void RoutsDictionary::SetSettings(const Json::Node &info) {
+    settings_ = {info.AsMap().at("bus_wait_time").AsDouble(),
+                 info.AsMap().at("bus_velocity").AsDouble()};
+}
+
+void RoutsDictionary::ReadQueries(const vector<Json::Node> &queries) {
+    for (auto &query : queries) {
+        if (query.AsMap().at("type").AsString() == "Stop") {
+            ReadStop(query);
+        } else if (query.AsMap().at("type").AsString() == "Bus") {
+            ReadBus(query);
         } else {
             throw std::invalid_argument("Unknown query");
         }
     }
 }
 
-std::ostream &RoutsDictionary::ProcessRequests(ostream &os, istream &is) {
-    int count;
-    is >> count;
-    for (int i = 0; i < count; ++i) {
-        std::string request;
-        is >> request;
-        if (request == "Bus") {
-            string busNumber;
-            while (is.peek() == ' ') {
-                is.get();
+void RoutsDictionary::BuildGraph() {
+    Graph::DirectedWeightedGraph<double> graph(Stop::lastId_ * 2 + 1);
+    for (const auto &bus : buses_) {
+        for (auto stop = bus.second.GetStops().begin(); stop != bus.second.GetStops().end(); stop++) {
+            double distance = 0.0;
+            for (auto otherStop = next(stop); otherStop != bus.second.GetStops().end(); otherStop++) {
+                distance += stops_.at(*prev(otherStop)).GetDistances()[*otherStop];
+                EdgeInfo edge = {"Bus", bus.second.GetName(),
+                                 distance / 1000.0 / settings_.BUSES_VELOCITY * 60, otherStop - stop};
+                auto id = graph.AddEdge({stops_.at(*stop).id_ + Stop::lastId_,
+                                         stops_.at(*otherStop).id_,
+                                         edge.time});
+                edgesInfo_.insert({id, edge});
             }
-            getline(is, busNumber, '\n');
-            ProcessBusRequest(busNumber, os);
-        } else if (request == "Stop") {
-            string stop;
-            while (is.peek() == ' ') {
-                is.get();
-            }
-            getline(is, stop, '\n');
-            ProcessStopRequest(stop, os);
+        }
+    }
+    for (const auto &stop : stops_) {
+        {
+            EdgeInfo edge{"Stop", stop.first, 0};
+            auto id = graph.AddEdge({stop.second.id_ + Stop::lastId_,
+                                     stop.second.id_, edge.time});
+            edgesInfo_.emplace(id, edge);
+        }
+        {
+            EdgeInfo edge = {"Stop", stop.first, settings_.STOP_WAITING_TIME};
+            auto id = graph.AddEdge({stop.second.id_,
+                                     stop.second.id_ + Stop::lastId_, edge.time});
+            edgesInfo_.emplace(id, edge);
+        }
+    }
+    router_ = Graph::Router<double>(move(graph));
+}
+
+std::ostream &RoutsDictionary::ProcessRequests(const std::vector<Json::Node> &requests, ostream &os) {
+    vector<Json::Node> responses;
+    for (const auto &request : requests) {
+        const auto &rMap = request.AsMap();
+        if (rMap.at("type").AsString() == "Bus") {
+            responses.push_back(ProcessBusRequest(rMap.at("name").AsString(), rMap.at("id").AsInt()));
+        } else if (rMap.at("type").AsString() == "Stop") {
+            responses.push_back(ProcessStopRequest(rMap.at("name").AsString(), rMap.at("id").AsInt()));
+        } else if (rMap.at("type").AsString() == "Route") {
+            responses.push_back(ProcessTypeRequest(rMap.at("from").AsString(),
+                                                   rMap.at("to").AsString(), rMap.at("id").AsInt()));
         } else {
             throw invalid_argument("Unknown Request");
         }
     }
+    os << Json::Document(move(responses)) << '\n';
     return os;
 }
-
-void RoutsDictionary::ReadBus(istream &is) {
-    string busNumber;
-    getline(is, busNumber, ':');
-    buses_.emplace(busNumber, busNumber);
-    BusInfo &bus = buses_.at(busNumber);
-    std::string stop;
-    char delim;
-    while (is.peek() != '\n') {
-        stop = "";
-        while (is.peek() == ' ') {
-            is.get();
-        };
-        while (is.peek() != '>' && is.peek() != '-' && is.peek() != '\n') {
-            stop += static_cast<char>(is.get());
-        }
-        if (is.peek() != '\n') {
-            stop.pop_back();
-            is >> delim;
-        }
-        stops_[stop].AddBus(bus.GetName());
-        bus.AddStop(move(stop));
+void RoutsDictionary::ReadBus(const Json::Node &query) {
+    const auto &qMap = query.AsMap();
+    const auto &busName = qMap.at("name").AsString();
+    buses_.emplace(busName, busName);
+    BusInfo &bus = buses_.at(busName);
+    for (const auto &stop : qMap.at("stops").AsArray()) {
+        stops_[stop.AsString()].AddBus(busName);
+        bus.AddStop(stop.AsString());
     }
-    if (delim == '-') {
+    if (!qMap.at("is_roundtrip").AsBool()) {
         bus.Loop();
     }
 }
-void RoutsDictionary::ReadStop(istream &is) {
-    std::string name;
-    double latitude, longitude;
-    char dummy;
-    getline(is, name, ':');
-    is >> latitude >> dummy >> longitude;
-    stops_[name].SetCoords(latitude, longitude);
-    if (is.peek() != '\n') {
-        is.get();
-    }
-    Stop &stop = stops_.at(name);
-    while (is.peek() != '\n') {
-        string dum;
-        int distance;
-        string otherStop;
-        is >> distance;
-        is >> dummy >> dum;
-        while (is.peek() == ' ') {
-            is.get();
-        }
-        while (is.peek() != ',' && is.peek() != '\n') {
-            otherStop += static_cast<char>(is.get());
-        }
-        if (is.peek() != '\n') {
-            is.get();
-        }
-        stop.AddVertex(otherStop, distance);
+
+
+void RoutsDictionary::ReadStop(const Json::Node &query) {
+    const auto &qMap = query.AsMap();
+    stops_[qMap.at("name").AsString()].SetCoords(qMap.at("latitude").AsDouble(), qMap.at("longitude").AsDouble());
+    stops_[qMap.at("name").AsString()].id_ = ++Stop::lastId_;
+    const auto &reachableStops = qMap.at("road_distances").AsMap();
+    for (const auto &stop : reachableStops) {
+        stops_[qMap.at("name").AsString()].AddVertex(stop.first, stop.second.AsInt());
     }
 }
 
-
-void RoutsDictionary::ProcessBusRequest(const string &number, ostream &os) {
-    if (buses_.find(number) != buses_.end()) {
+Json::Node RoutsDictionary::ProcessBusRequest(const string &number, int id) {
+    map<string, Json::Node> response;
+    if (buses_.count(number)) {
         auto &bus = buses_.at(number);
-        os << "Bus " << number << ": " << bus.NumberOfStops() << " stops on route, ";
-        os << bus.NumberOfUniqueStops() << " unique stops, ";
-        os << setprecision(7) << bus.GetDistance(stops_) << " route length, ";
-        os << setprecision(7) << bus.GetCurvature() << " curvature\n";
+        response.emplace("request_id", id);
+        response.emplace("route_length", bus.GetDistance(stops_));
+        response.emplace("curvature", bus.GetCurvature());
+        response.emplace("stop_count", static_cast<int>(bus.NumberOfStops()));
+        response.emplace("unique_stop_count", static_cast<int>(bus.NumberOfUniqueStops()));
     } else {
-        os << "Bus " << number << ": not found\n";
+        response.emplace("request_id", id);
+        response.emplace("error_message", "not found");
     }
+    return response;
 }
 
-void RoutsDictionary::ProcessStopRequest(const string &stop, ostream &os) {
-    if (stops_.find(stop) != stops_.end()) {
+Json::Node RoutsDictionary::ProcessStopRequest(const string &stop, int id) {
+    map<string, Json::Node> response;
+    if (stops_.count(stop)) {
         const auto &stopInfo = stops_.at(stop);
+        vector<Json::Node> busesOutput;
         if (!stopInfo.GetBuses().empty()) {
-            os << "Stop " << stop << ": buses";
-            for (const auto &item : stopInfo.GetBuses()) {
-                os << ' ' << item;
+            const auto &buses = stopInfo.GetBuses();
+            for (const auto &item : buses) {
+                busesOutput.emplace_back(item);
             }
-            os << '\n';
-        } else {
-            os << "Stop " << stop << ": no buses\n";
         }
+        response.emplace("buses", busesOutput);
+        response.emplace("request_id", id);
     } else {
-        os << "Stop " << stop << ": not found\n";
+        response.emplace("request_id", id);
+        response.emplace("error_message", "not found");
     }
+    return response;
+}
+
+Json::Node RoutsDictionary::ProcessTypeRequest(const string &from, const string &to, int id) {
+    auto route = router_.BuildRoute(stops_.at(from).id_, stops_.at(to).id_);
+    map<string, Json::Node> response;
+    if (route) {
+        response.emplace("request_id", id);
+        response.emplace("total_time", route->weight);
+        vector<Json::Node> items;
+        items.reserve(route->edge_count);
+        for (int i = 0; i < route->edge_count; i++) {
+            items.push_back(PrintRouteElement(edgesInfo_[router_.GetRouteEdge(route->id, i)]));
+        }
+        response.emplace("items", items);
+    } else {
+        response.emplace("request_id", id);
+        response.emplace("error_message", "not found");
+    }
+    return response;
+}
+
+Json::Node RoutsDictionary::PrintRouteElement(const EdgeInfo &info) {
+    map<string, Json::Node> response;
+    if (info.type == "Stop") {
+        if (info.time != 0.0) {
+            response.emplace("type", "Wait");
+            response.emplace("stop_name", info.name);
+            response.emplace("time", info.time);
+        }
+    } else if (info.type == "Bus") {
+        response.emplace("type", "Bus");
+        response.emplace("bus", info.name);
+        response.emplace("time", info.time);
+        response.emplace("span_count", static_cast<int>(info.distanceInStops));
+    }
+    return response;
 }

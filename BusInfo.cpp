@@ -11,7 +11,7 @@
 
 using namespace std;
 
-void BusInfo::AddStop(string &&stop) {
+void BusInfo::AddStop(const string &stop) {
     busStops_.push_back(stop);
 }
 

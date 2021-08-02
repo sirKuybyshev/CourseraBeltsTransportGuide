@@ -1,11 +1,10 @@
-//
-// Created by timofey on 7/23/21.
-//
-
 #ifndef MAIN_CPP_ROUTSDICIONARY_H
 #define MAIN_CPP_ROUTSDICIONARY_H
 
 #include "BusInfo.h"
+#include "router.h"
+#include "Json.h"
+#include "EdgeInfo.h"
 
 #include <iostream>
 #include <sstream>
@@ -14,21 +13,38 @@
 
 class RoutsDictionary {
 public:
-    void ReadQueries(std::istream &is = std::cin);
+    std::istream &Process(std::istream &is = std::cin, std::ostream &os = std::cout);
 
-    std::ostream &ProcessRequests(std::ostream &os = std::cout, std::istream &is = std::cin);
+    void ReadQueries(const std::vector<Json::Node> &queries);
+
+    std::ostream &ProcessRequests(const std::vector<Json::Node> &, std::ostream &os = std::cout);
 
 private:
+    struct Settings {
+        double STOP_WAITING_TIME;
+        double BUSES_VELOCITY;
+    };
+    Settings settings_;
     std::unordered_map<std::string, Stop> stops_;
     std::unordered_map<std::string, BusInfo> buses_;
+    Graph::Router<double> router_;
+    std::unordered_map<Graph::EdgeId, EdgeInfo> edgesInfo_;
 
-    void ReadStop(std::istream &is);
+    void SetSettings(const Json::Node &info);
 
-    void ReadBus(std::istream &is);
+    void ReadStop(const Json::Node &query);
 
-    void ProcessBusRequest(const std::string &number, std::ostream &os);
+    void ReadBus(const Json::Node &query);
 
-    void ProcessStopRequest(const std::string &stop, std::ostream &os);
+    void BuildGraph();
+
+    Json::Node ProcessBusRequest(const std::string &number, int id);
+
+    Json::Node ProcessStopRequest(const std::string &stop, int id);
+
+    Json::Node ProcessTypeRequest(const std::string &from, const std::string &to, int id);
+
+    static Json::Node PrintRouteElement(const EdgeInfo &info);
 };
 
 #endif//MAIN_CPP_ROUTSDICIONARY_H
