@@ -8,17 +8,17 @@ using namespace std;
 Graph::EdgeId Stop::lastId_ = 0;
 
 istream &RoutsDictionary::Process(istream &is, ostream &os) {
-    auto input = Json::Load(is).GetRoot().AsMap();
-    SetSettings(input.at("routing_settings"));
+    const auto &input = Json::Load(is).GetRoot().AsMap();
+    SetSettings(input.at("routing_settings").AsMap());
     ReadQueries(input.at("base_requests").AsArray());
     BuildGraph();
     ProcessRequests(input.at("stat_requests").AsArray(), os);
     return is;
 }
 
-void RoutsDictionary::SetSettings(const Json::Node &info) {
-    settings_ = {info.AsMap().at("bus_wait_time").AsDouble(),
-                 info.AsMap().at("bus_velocity").AsDouble()};
+void RoutsDictionary::SetSettings(const map<string, Json::Node> &info) {
+    settings_ = {info.at("bus_wait_time").AsDouble(),
+                 info.at("bus_velocity").AsDouble()};
 }
 
 void RoutsDictionary::ReadQueries(const vector<Json::Node> &queries) {
@@ -39,7 +39,14 @@ void RoutsDictionary::BuildGraph() {
         for (auto stop = bus.second.GetStops().begin(); stop != bus.second.GetStops().end(); stop++) {
             double distance = 0.0;
             for (auto otherStop = next(stop); otherStop != bus.second.GetStops().end(); otherStop++) {
-                distance += stops_.at(*prev(otherStop)).GetDistances()[*otherStop];
+                if (stops_.at(*prev(otherStop)).GetDistances()[*otherStop]) {
+                    distance += stops_.at(*prev(otherStop)).GetDistances()[*otherStop];
+                } else if (stops_.at(*otherStop).GetDistances()[*prev(otherStop)]) {
+                    distance += stops_.at(*otherStop).GetDistances()[*prev(otherStop)];
+                } else {
+                    cerr << *prev(otherStop) << ' ' << *otherStop << endl;
+                    throw invalid_argument("No such way or teleportation");
+                }
                 EdgeInfo edge = {"Bus", bus.second.GetName(),
                                  distance / 1000.0 / settings_.BUSES_VELOCITY * 60, otherStop - stop};
                 auto id = graph.AddEdge({stops_.at(*stop).id_ + Stop::lastId_,

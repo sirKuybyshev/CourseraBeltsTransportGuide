@@ -30,7 +30,7 @@ private:
     Graph::Router<double> router_;
     std::unordered_map<Graph::EdgeId, EdgeInfo> edgesInfo_;
 
-    void SetSettings(const Json::Node &info);
+    void SetSettings(const std::map<std::string, Json::Node> &info);
 
     void ReadStop(const Json::Node &query);
 
